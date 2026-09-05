@@ -204,21 +204,47 @@ builder.add_edge("search_documentation", "write_response")
 builder.add_edge("bug_tracking", "write_response")
 builder.add_edge("send_reply", END)
 
-DB_URI = os.environ["DATABASE_URL"]
-_pool = ConnectionPool(
-    conninfo=DB_URI,
-    kwargs={"autocommit": True, "prepare_threshold": 0},
-    open=True,
-)
-checkpointer = PostgresSaver(_pool)
-checkpointer.setup()  # creates tables the first time; safe to call again
-app = builder.compile(checkpointer=checkpointer)
+# DB_URI = os.environ["DATABASE_URL"]
+# _pool = ConnectionPool(
+#     conninfo=DB_URI,
+#     kwargs={"autocommit": True, "prepare_threshold": 0},
+#     open=True,
+# )
+# checkpointer = PostgresSaver(_pool)
+# checkpointer.setup()  # creates tables the first time; safe to call again
+# app = builder.compile(checkpointer=checkpointer)
+
+
+def build_app(checkpointer):
+    """Compile the email graph with the given checkpointer."""
+    return builder.compile(checkpointer=checkpointer)
+
+_sync_app=None
+
+def get_sync_app():
+    """Lazy sync Postgres compile for demo.py / CLI. Do not use from async server request path."""
+    global _sync_app
+    if _sync_app is not None:
+        return _sync_app
+
+    db_uri = os.environ["DATABASE_URL"]
+    pool = ConnectionPool(
+        conninfo=db_uri,
+        kwargs={"autocommit": True, "prepare_threshold": 0},
+        open=True,
+    )
+    checkpointer = PostgresSaver(pool)
+    checkpointer.setup()
+    _sync_app = build_app(checkpointer)
+    return _sync_app
+
 
 
 def show_graph() -> None:
-    """Save the compiled graph as a PNG and open it (terminal cannot display IPython images)."""
+    """Save the compiled graph as a PNG and open it."""
     graph_path = _SCRIPT_DIR / "email_graph.png"
-    graph_path.write_bytes(app.get_graph().draw_mermaid_png())
+    compiled = builder.compile()
+    graph_path.write_bytes(compiled.get_graph().draw_mermaid_png())
     print(f"Graph saved to {graph_path}")
     os.startfile(graph_path)
 

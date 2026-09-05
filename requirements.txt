@@ -4,3 +4,5 @@ python-dotenv
 langgraph-checkpoint-postgres
 psycopg[binary]
 psycopg-pool
+fastapi
+uvicorn[standard]

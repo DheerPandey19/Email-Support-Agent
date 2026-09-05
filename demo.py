@@ -11,7 +11,9 @@ import uuid
 
 from langgraph.types import Command
 
-from graph import app, show_graph
+from graph import get_sync_app, show_graph
+
+app = get_sync_app()
 
 
 def run_until_sent(initial_state: dict, thread_id: str) -> None:
