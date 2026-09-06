@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Email Support Review</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --ink: #1c1b19;
+      --muted: #5c584f;
+      --line: #d8d2c4;
+      --panel: #fffdf8;
+      --accent: #0f5c4c;
+      --accent-ink: #f4fffb;
+      --warn: #8a3b12;
+      --ok: #1a5c2e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #efe8d8 0%, transparent 45%),
+        linear-gradient(180deg, #faf7f0 0%, var(--bg) 100%);
+      min-height: 100vh;
+      line-height: 1.45;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .lede {
+      margin: 0 0 1.75rem;
+      color: var(--muted);
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    section h2 {
+      margin: 0 0 1rem;
+      font-size: 1.05rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 0.35rem;
+      color: var(--muted);
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+      background: #fff;
+      margin-bottom: 0.9rem;
+    }
+
+    textarea { min-height: 110px; resize: vertical; }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    button {
+      font: inherit;
+      border: none;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--accent-ink);
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    button.danger {
+      background: #6e1f1f;
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .meta {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .meta strong { color: var(--muted); font-weight: 600; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      background: #efe6d4;
+      font-size: 0.85rem;
+    }
+
+    .badge.high, .badge.critical { background: #f3d9c8; color: var(--warn); }
+    .badge.completed { background: #d7ecdd; color: var(--ok); }
+    .badge.interrupted { background: #efe6d4; color: var(--warn); }
+
+    .draft {
+      white-space: pre-wrap;
+      background: #f3eee3;
+      border-radius: 6px;
+      padding: 0.85rem;
+      margin: 0 0 1rem;
+    }
+
+    .thread {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+    }
+
+    .status {
+      margin-top: 0.75rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      min-height: 1.3em;
+    }
+
+    .error { color: #8a1f1f; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Email Support Review</h1>
+    <p class="lede">Submit an email, review drafts that need approval, and reload a thread after a server restart.</p>
+
+    <section>
+      <h2>1. Submit a new email</h2>
+      <form id="submit-form">
+        <label for="sender_email">Sender email</label>
+        <input id="sender_email" name="sender_email" type="email" required value="customer@example.com" />
+
+        <label for="email_content">Email content</label>
+        <textarea id="email_content" name="email_content" required>I was charged twice for my subscription! This is urgent!</textarea>
+
+        <button type="submit">Send to workflow</button>
+      </form>
+      <p id="submit-status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section>
+      <h2>2. Load an existing thread</h2>
+      <p class="lede" style="margin-bottom: 0.9rem;">Paste a thread_id after restarting the server to prove Postgres durability.</p>
+      <form id="load-form" class="row">
+        <input id="thread_id_input" name="thread_id" placeholder="thread_id" required style="flex: 1; margin-bottom: 0;" />
+        <button type="submit">Load</button>
+      </form>
+      <p id="load-status" class="status" aria-live="polite"></p>
+    </section>
+
+    <section id="review-panel" class="hidden">
+      <h2>3. Review</h2>
+      <div class="meta">
+        <div>Status: <span id="status-badge" class="badge"></span></div>
+        <div>Thread: <span id="thread-display" class="thread"></span></div>
+        <div>Urgency: <span id="urgency" class="badge"></span></div>
+        <div>Intent: <span id="intent" class="badge"></span></div>
+      </div>
+
+      <label>Original email</label>
+      <pre id="original-email" class="draft"></pre>
+
+      <label>Draft response</label>
+      <pre id="draft-response" class="draft"></pre>
+
+      <div id="actions">
+        <label for="edited_response">Optional edit (used on Approve)</label>
+        <textarea id="edited_response" placeholder="Leave blank to keep the draft as-is"></textarea>
+        <div class="row">
+          <button type="button" id="approve-btn">Approve</button>
+          <button type="button" id="reject-btn" class="danger">Reject</button>
+        </div>
+      </div>
+
+      <p id="review-status" class="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script>
+    const reviewPanel = document.getElementById("review-panel");
+    const actions = document.getElementById("actions");
+    let currentThreadId = null;
+
+    function setStatus(el, message, isError = false) {
+      el.textContent = message || "";
+      el.classList.toggle("error", Boolean(isError));
+    }
+
+    function showCompleted(data) {
+      currentThreadId = data.thread_id;
+      reviewPanel.classList.remove("hidden");
+      actions.classList.add("hidden");
+
+      const badge = document.getElementById("status-badge");
+      badge.textContent = "completed";
+      badge.className = "badge completed";
+
+      document.getElementById("thread-display").textContent = data.thread_id;
+      document.getElementById("urgency").textContent = (data.result && data.result.classification && data.result.classification.urgency) || "—";
+      document.getElementById("intent").textContent = (data.result && data.result.classification && data.result.classification.intent) || "—";
+      document.getElementById("original-email").textContent = (data.result && data.result.email_content) || "(no email content in result)";
+      document.getElementById("draft-response").textContent = (data.result && data.result.draft_response) || "(reply sent / no draft stored)";
+      document.getElementById("edited_response").value = "";
+      setStatus(document.getElementById("review-status"), "Workflow finished for this thread.");
+    }
+
+    function showInterrupted(data) {
+      currentThreadId = data.thread_id;
+      const interrupt = data.interrupt || {};
+      reviewPanel.classList.remove("hidden");
+      actions.classList.remove("hidden");
+
+      const badge = document.getElementById("status-badge");
+      badge.textContent = "interrupted — needs review";
+      badge.className = "badge interrupted";
+
+      document.getElementById("thread-display").textContent = data.thread_id;
+
+      const urgency = interrupt.urgency || "—";
+      const urgencyEl = document.getElementById("urgency");
+      urgencyEl.textContent = urgency;
+      urgencyEl.className = "badge " + String(urgency).toLowerCase();
+
+      document.getElementById("intent").textContent = interrupt.intent || "—";
+      document.getElementById("original-email").textContent = interrupt.original_email || "";
+      document.getElementById("draft-response").textContent = interrupt.draft_response || "";
+      document.getElementById("edited_response").value = "";
+      setStatus(document.getElementById("review-status"), interrupt.action || "Please review this draft.");
+    }
+
+    function renderResponse(data) {
+      if (data.status === "interrupted") {
+        showInterrupted(data);
+      } else {
+        showCompleted(data);
+      }
+    }
+
+    async function readJson(res) {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = data.detail || res.statusText || "Request failed";
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+      }
+      return data;
+    }
+
+    document.getElementById("submit-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const statusEl = document.getElementById("submit-status");
+      setStatus(statusEl, "Running graph…");
+
+      try {
+        const res = await fetch("/emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sender_email: document.getElementById("sender_email").value.trim(),
+            email_content: document.getElementById("email_content").value,
+          }),
+        });
+        const data = await readJson(res);
+        setStatus(statusEl, "thread_id: " + data.thread_id);
+        document.getElementById("thread_id_input").value = data.thread_id;
+        renderResponse(data);
+      } catch (err) {
+        setStatus(statusEl, err.message, true);
+      }
+    });
+
+    document.getElementById("load-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const statusEl = document.getElementById("load-status");
+      const threadId = document.getElementById("thread_id_input").value.trim();
+      setStatus(statusEl, "Loading…");
+
+      try {
+        const res = await fetch("/emails/" + encodeURIComponent(threadId));
+        const data = await readJson(res);
+        setStatus(statusEl, "Loaded " + data.status + " thread.");
+        renderResponse(data);
+      } catch (err) {
+        setStatus(statusEl, err.message, true);
+      }
+    });
+
+    async function sendReview(approved) {
+      if (!currentThreadId) return;
+      const statusEl = document.getElementById("review-status");
+      setStatus(statusEl, approved ? "Approving…" : "Rejecting…");
+
+      const body = { approved };
+      const edited = document.getElementById("edited_response").value.trim();
+      if (approved && edited) {
+        body.edited_response = edited;
+      }
+
+      try {
+        const res = await fetch("/emails/" + encodeURIComponent(currentThreadId) + "/review", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await readJson(res);
+        renderResponse(data);
+      } catch (err) {
+        setStatus(statusEl, err.message, true);
+      }
+    }
+
+    document.getElementById("approve-btn").addEventListener("click", () => sendReview(true));
+    document.getElementById("reject-btn").addEventListener("click", () => sendReview(false));
+  </script>
+</body>
+</html>

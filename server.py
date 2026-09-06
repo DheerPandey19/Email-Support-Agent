@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# psycopg async needs SelectorEventLoop; Windows defaults to ProactorEventLoop.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -156,3 +162,17 @@ async def review_email(thread_id: str, body: ReviewIn, request: Request):
         _config(thread_id),
     )
     return _format_invoke_response(thread_id, result)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    # uvicorn 0.36+ forces ProactorEventLoop on Windows unless we override.
+    # psycopg async requires SelectorEventLoop.
+    uvicorn.run(
+        "server:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True,
+        loop="asyncio:SelectorEventLoop",
+    )
