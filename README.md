@@ -104,6 +104,3 @@ Responses use `"status": "interrupted" | "completed"` plus `thread_id`.
 - **`interrupt`** — pause for a human  
 - **`Command(resume=...)`** — human answered; continue  
 
-## License
-
-Use and adapt freely for learning and demos.
